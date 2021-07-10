@@ -132,13 +132,12 @@ namespace Servicios.Controllers
                 return CreatedAtAction("GetElibros", new { id = elibros.IdReg }, elibros);
             }
 
-            if (MensajeError.Length >0)
+            if (MensajeError.Length > 0)
             {
                 return BadRequest(new { Ok = false, Mensaje = MensajeError });
             }
 
-
-
+            return Ok();
         }
 
         private DtoVerificacionDatos VerificarSiAutorEstaRegistrado(Elibros elibros)
