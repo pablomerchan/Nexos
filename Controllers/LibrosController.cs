@@ -34,9 +34,7 @@ namespace Servicios.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Elibros>> GetElibros(int id)
         {
-            
-
-            var elibros = await _DbContext.Tbllibros.FindAsync(id);
+              var elibros = await _DbContext.Tbllibros.FindAsync(id);
 
             if (elibros == null)
             {
@@ -86,53 +84,63 @@ namespace Servicios.Controllers
             string MensajeError = string.Empty;
             bool datosIngresadosSonValidos = false;
 
-            // Se debe garantizar la integridad de la información
-            DtoVerificacionDatos ResultadoVerificacionDatos = VerificarDatosIngresados(elibros);
-            if (ResultadoVerificacionDatos.EsValido)
-            {
-                datosIngresadosSonValidos = true;
-            } else
-            {
-                MensajeError= ResultadoVerificacionDatos.MensajeError;
-            }
 
-            // Se debe controlar el número de libros permitidos
-            if (datosIngresadosSonValidos)
+            try
             {
-                CupoLibrosEstaCompleto = _reglaNegocioLibros.EstaLaCantidadDelibrosCompleta(elibros.IdLibro);
-            } else
-            {
-                //Si al intentar registrar un libro se supera el máximo permitido, debe generarse una excepción
-                // y responder con el mensaje: “No es posible registrar el libro, se alcanzó el máximo permitido.”.
-                MensajeError = MensajesDelProceso.CupoLibrosCompleto;
-            }
-
-            //Si al intentar registrar un libro y no existe autor registrado...
-            if (CupoLibrosEstaCompleto==false)
-            {
-                var respuesta = VerificarSiAutorEstaRegistrado(elibros);
-                AutorYaEstaRegistrado = respuesta.EsValido;
-
-                if (respuesta.EsValido==false)
+                // Se debe garantizar la integridad de la información
+                DtoVerificacionDatos ResultadoVerificacionDatos = VerificarDatosIngresados(elibros);
+                if (ResultadoVerificacionDatos.EsValido)
                 {
-                    //Responder con el mensaje: “El autor no está registrado”.
-                    MensajeError = MensajesDelProceso.AutorNoRegistrado;
+                    datosIngresadosSonValidos = true;
                 }
-            } 
+                else
+                {
+                    MensajeError = ResultadoVerificacionDatos.MensajeError;
+                }
 
-            if (AutorYaEstaRegistrado)
-            {
-                ///<remarks>
-                /// Las validaciones fueron exitosas y se procede a la insercion del nuevo libro
-                /// </remarks>       
-                _DbContext.Tbllibros.Add(elibros);
-                await _DbContext.SaveChangesAsync();
-                return CreatedAtAction("GetElibros", new { id = elibros.IdReg }, elibros);
+                // Se debe controlar el número de libros permitidos
+                if (datosIngresadosSonValidos)
+                {
+                    CupoLibrosEstaCompleto = _reglaNegocioLibros.EstaLaCantidadDelibrosCompleta(elibros.IdLibro);
+                }
+                else
+                {
+                    //Si al intentar registrar un libro se supera el máximo permitido, debe generarse una excepción
+                    // y responder con el mensaje: “No es posible registrar el libro, se alcanzó el máximo permitido.”.
+                    MensajeError = MensajesDelProceso.CupoLibrosCompleto;
+                }
+
+                //Si al intentar registrar un libro y no existe autor registrado...
+                if (CupoLibrosEstaCompleto == false)
+                {
+                    var respuesta = VerificarSiAutorEstaRegistrado(elibros);
+                    AutorYaEstaRegistrado = respuesta.EsValido;
+
+                    if (respuesta.EsValido == false)
+                    {
+                        //Responder con el mensaje: “El autor no está registrado”.
+                        MensajeError = MensajesDelProceso.AutorNoRegistrado;
+                    }
+                }
+
+                if (AutorYaEstaRegistrado)
+                {
+                    ///<remarks>
+                    /// Las validaciones fueron exitosas y se procede a la insercion del nuevo libro
+                    /// </remarks>       
+                    _DbContext.Tbllibros.Add(elibros);
+                    await _DbContext.SaveChangesAsync();
+                    return CreatedAtAction("GetElibros", new { id = elibros.IdReg }, elibros);
+                }
+
+                if (MensajeError.Length > 0)
+                {
+                    return BadRequest(new { Ok = false, Mensaje = MensajeError });
+                }
             }
-
-            if (MensajeError.Length > 0)
+            catch (System.Exception ex)
             {
-                return BadRequest(new { Ok = false, Mensaje = MensajeError });
+                return BadRequest(new { Ok = false, Mensaje = ex.Message });
             }
 
             return Ok();
