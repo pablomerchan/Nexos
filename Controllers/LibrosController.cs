@@ -4,6 +4,7 @@ using Dominio.Modelos;
 using Logica.Libros;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,60 +31,14 @@ namespace Servicios.Controllers
             return await _DbContext.Tbllibros.ToListAsync();
         }
 
-        // GET: api/Libros/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Elibros>> GetElibros(int id)
-        {
-              var elibros = await _DbContext.Tbllibros.FindAsync(id);
-
-            if (elibros == null)
-            {
-                return NotFound();
-            }
-
-            return elibros;
-        }
-
-        // PUT: api/Libros/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutElibros(int id, Elibros elibros)
-        {
-            if (id != elibros.IdReg)
-            {
-                return BadRequest();
-            }
-
-            _DbContext.Entry(elibros).State = EntityState.Modified;
-
-            try
-            {
-                await _DbContext.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ElibrosExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-
+             
         [HttpPost]
         public async Task<ActionResult<Elibros>> PostElibros(Elibros elibros)
         {
             bool CupoLibrosEstaCompleto = false;
             bool AutorYaEstaRegistrado = false;
-            string MensajeError = string.Empty;
+            string MensajeError = "";
             bool datosIngresadosSonValidos = false;
-
 
             try
             {
@@ -102,14 +57,13 @@ namespace Servicios.Controllers
                 if (datosIngresadosSonValidos)
                 {
                     CupoLibrosEstaCompleto = _reglaNegocioLibros.EstaLaCantidadDelibrosCompleta(elibros.IdLibro);
+                    if (CupoLibrosEstaCompleto==true)
+                    {
+                        MensajeError = MensajesDelProceso.CupoLibrosCompleto;
+                        CupoLibrosEstaCompleto = true;
+                    }
                 }
-                else
-                {
-                    //Si al intentar registrar un libro se supera el máximo permitido, debe generarse una excepción
-                    // y responder con el mensaje: “No es posible registrar el libro, se alcanzó el máximo permitido.”.
-                    MensajeError = MensajesDelProceso.CupoLibrosCompleto;
-                }
-
+               
                 //Si al intentar registrar un libro y no existe autor registrado...
                 if (CupoLibrosEstaCompleto == false)
                 {
@@ -151,70 +105,105 @@ namespace Servicios.Controllers
             DtoVerificacionDatos respuestaMetodo = new();
             respuestaMetodo.EsValido = false;
 
-            if (_DbContext.TblAutores.Where(e => e.IdAutor == elibros.IdAutor).Count()>0)
+            try
             {
-                respuestaMetodo.EsValido = true;
-            } else
-            {
-                respuestaMetodo.MensajeError = MensajesDelProceso.AutorNoRegistrado;
+                if (_DbContext.TblAutores.Where(e => e.IdAutor == elibros.IdAutor).Count() > 0)
+                {
+                    respuestaMetodo.EsValido = true;
+                }
+                else
+                {
+                    respuestaMetodo.MensajeError = MensajesDelProceso.AutorNoRegistrado;
+                }
             }
+            catch (Exception e)
+            {
 
+                throw new Exception(e.Message);
+            }
             return respuestaMetodo;
         }
 
         private DtoVerificacionDatos VerificarDatosIngresados(Elibros elibros)
         {
             DtoVerificacionDatos respuestaMetodo = new DtoVerificacionDatos();
+            bool ValidacionPreviaIsValida = true;
+            respuestaMetodo.EsValido = true;
 
-            if (elibros.IdLibro == 0)
+            try
             {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.IdLibroVacio;
-            }
+                if (elibros.IdLibro == 0)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.IdLibroVacio;
+                    ValidacionPreviaIsValida = false;
 
-            if (elibros.titulo.Length == 0)
+                }
+
+                if (elibros.titulo.Length == 0 && ValidacionPreviaIsValida == true)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.TituloVacio;
+                    ValidacionPreviaIsValida = false;
+                }
+
+                if (elibros.anio == 0 && ValidacionPreviaIsValida == true)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.añoNoValido;
+                    ValidacionPreviaIsValida = false;
+                }
+
+                if (elibros.genero.Length == 0 && ValidacionPreviaIsValida == true)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.GeneroNoValido;
+                    ValidacionPreviaIsValida = false;
+                }
+
+                if (elibros.numeroPaginas == 0 && ValidacionPreviaIsValida == true)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.NumeroPaginasNoValido;
+                    ValidacionPreviaIsValida = false;
+                }
+
+                if (elibros.IdAutor == 0 && ValidacionPreviaIsValida == true)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.IdAutorNoValido;
+                    ValidacionPreviaIsValida = false;
+                }
+
+                if (elibros.IdLibro == 0 && ValidacionPreviaIsValida == true)
+                {
+                    respuestaMetodo.EsValido = false;
+                    respuestaMetodo.MensajeError = MensajesDelProceso.IdLibroVacio;
+                    ValidacionPreviaIsValida = false;
+                }
+            }
+            catch (System.Exception e)
             {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.TituloVacio;
+                throw new Exception(e.Message);
             }
-
-            if (elibros.anio == 0)
-            {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.añoNoValido;
-            }
-
-            if (elibros.genero.Length == 0) 
-            {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.GeneroNoValido;
-            }
-
-            if (elibros.numeroPaginas == 0) 
-            {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.NumeroPaginasNoValido;
-            }
-
-            if (elibros.IdAutor == 0) 
-            {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.IdAutorNoValido;
-            }
-
-            if (elibros.IdLibro == 0) 
-            {
-                respuestaMetodo.EsValido = false;
-                respuestaMetodo.MensajeError = MensajesDelProceso.IdLibroVacio;
-            }
-
             return respuestaMetodo;
         }
-      
-        private bool ElibrosExists(int id)
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteELibros(int id)
         {
-            return _DbContext.Tbllibros.Any(e => e.IdReg == id);
+            var elibros = await _DbContext.Tbllibros.FindAsync(id);
+            if (elibros == null)
+            {
+                return NotFound();
+            }
+
+            _DbContext.Tbllibros.Remove(elibros);
+            await _DbContext.SaveChangesAsync();
+
+            return NoContent();
         }
+
 
         private class DtoVerificacionDatos
         {

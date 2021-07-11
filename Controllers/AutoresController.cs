@@ -25,20 +25,7 @@ namespace Servicios.Controllers
             return await _DbContext.TblAutores.ToListAsync();
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Eautores>> GetEautores(int id)
-        {
-            var eautores = await _DbContext.TblAutores.FindAsync(id);
-
-            if (eautores == null)
-            {
-                return NotFound();
-            }
-
-            return eautores;
-        }
-
-        
+             
         [HttpPost]
         public async Task<ActionResult<Eautores>> PostEautores(Eautores eautores)
         {
